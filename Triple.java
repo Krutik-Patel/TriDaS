@@ -34,4 +34,9 @@ public class Triple {
 	public LocalDateTime getTimeStamp() {
 		return timeStamp;
 	}
+
+	public String toString() {
+		String result = "{" + subject + "," + predicate + "," + object + "," + requestId + "," + timeStamp.toString() + "}";
+		return result;
+	}	       
 }
