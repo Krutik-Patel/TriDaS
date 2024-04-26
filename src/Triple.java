@@ -1,5 +1,3 @@
-package TriDaS;
-
 import java.time.LocalDateTime;
 
 public class Triple {
