@@ -163,6 +163,7 @@ public class PostgreSQLServer extends Server {
                 insertStatement.setString(4, triple.getRequestId());
                 insertStatement.setTimestamp(5, Timestamp.valueOf(triple.getTimeStamp()));
                 insertStatement.executeUpdate();
+                System.out.println("New record inserted: "+ triple.getSubject()+triple.getPredicate()+triple.getObject());
             } else {
             	Timestamp existingTime = resultSet.getTimestamp("time");
             	Timestamp mergeTime = Timestamp.valueOf(triple.getTimeStamp());
@@ -174,6 +175,7 @@ public class PostgreSQLServer extends Server {
             		updateStatement.setString(4,  triple.getSubject());
             		updateStatement.setString(5, triple.getPredicate());
             		updateStatement.executeUpdate();
+            		System.out.println("Record updated: "+ triple.getSubject()+triple.getPredicate()+triple.getObject());
             	}
             }
 			return true;

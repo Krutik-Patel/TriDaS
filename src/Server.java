@@ -31,6 +31,7 @@ public abstract class Server {
 	protected abstract boolean compareAndUpdate(Triple triple);
 	
 	public boolean merge(int otherPort) {
+
 		URL url;
 		HttpURLConnection connection;
 		try {
@@ -47,6 +48,8 @@ public abstract class Server {
 			os.flush();
 			os.close();
 			
+
+			
 			int responseCode = connection.getResponseCode();
 			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 			String inputLine;
@@ -56,20 +59,20 @@ public abstract class Server {
 			}
 			in.close();
 			
-			String diffString = response.toString();
-			Set<String> diff = parseCausalHistory(diffString);
+			String diffTriplesString = response.toString();
 			
-			List<Triple> diffTriples = new ArrayList<>();
-			for (String reqid: diff) {
-				List<Triple> triplesOfId = getTriplesFromReqId(reqid);
-				diffTriples.addAll(triplesOfId);
+			if (diffTriplesString.equals("empty")) {
+				return true;
 			}
+			
+			List<Triple> diffTriples = Triple.stringToTriples(diffTriplesString);
+			
 			boolean success = true;
 			for (Triple triple: diffTriples) {
 				success = compareAndUpdate(triple) && success;
+				causalHistory.add(triple.getRequestId());
 			}
 			if(success) {
-				causalHistory.addAll(diff);
 				return true;
 			}
 			else {
@@ -92,6 +95,7 @@ public abstract class Server {
 	public static Set<String> parseCausalHistory(String input){
 		Set<String> otherCausalHistory = new HashSet<>();
 		input = input.substring(1, input.length()-1);
+		input = input.replace(" ", "");
 		String[] ids = input.split(",");
 		for (String id : ids) {
 			otherCausalHistory.add(id);
@@ -137,13 +141,22 @@ public abstract class Server {
 					response = String.valueOf(result);
 				}
 				else if (requestType.equals("serverMerge")) {
+
 					InputStream requestIn = exchange.getRequestBody();
 					Scanner scanner = new Scanner(requestIn).useDelimiter("\\A");
 					String result = scanner.hasNext() ? scanner.next() : "";
 					Set<String> otherCausalHistory = parseCausalHistory(result);
 					Set<String> diff = new HashSet<>(causalHistory);
 					diff.removeAll(otherCausalHistory);
-					response = diff.toString();
+					
+					List<Triple> diffTriples = new ArrayList<>();
+					for (String reqid: diff) {
+						List<Triple> triplesOfId = getTriplesFromReqId(reqid);
+						diffTriples.addAll(triplesOfId);
+					}
+					response = Triple.triplesToString(diffTriples);
+					
+					
 				}
 			}
 			exchange.sendResponseHeaders(200, response.getBytes().length);
