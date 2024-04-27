@@ -46,20 +46,26 @@ public abstract class Server {
 			if (requestTypes != null) {
 				String requestType = requestTypes.get(0);
 				String requestId = requestIds.get(0);
+				String requestParam = requestParams.get(0);
 				if (requestType.equals("query")) {
-					String subject = requestParams.get(0);
+					String subject = requestParam;
 					List<Triple> result = query(subject);
 					response = triplesToString(result);
 				}
 				else if (requestType.equals("update")) {
-					String subject = requestParams.get(0);	
-					String predicate = requestParams.get(1);
-					String object = requestParams.get(2);
+					System.out.println("Handling update");
+					System.out.println("Request params: "+ requestParam);
+					String subject = requestParam.split("\\|")[0];	
+					String predicate = requestParam.split("\\|")[1];
+					String object = requestParam.split("\\|")[2];
+					System.out.println("Calling update with:" + subject + predicate + object);
 					boolean result = update(subject, predicate, object, requestId);
+					System.out.println("Response: "+ result);
 					if (result) {
 						causalHistory.add(requestId);
 					}
 					response = String.valueOf(result);
+					
 				}
 				else if (requestType.equals("merge")) {
 					String serverId = requestParams.get(0);
