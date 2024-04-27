@@ -19,24 +19,6 @@ public class PostgreSQLServer extends Server {
 	private final String password = "root";
 	private Connection jdbcConnection;
 	
-	private Connection connect() {
-		try(Connection connection = DriverManager.getConnection(url, user, password)) {
-			if(connection != null) {
-				System.out.println("Connected to PostgreSQL server successfully!");
-				System.out.println(connection.isClosed());
-				return connection;
-			}
-			else {
-				System.out.println("Failed to connect PostgreSQL server");
-				System.exit(1);
-				return null;
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-			System.exit(1);
-			return null;
-		}
-	}
 	
 	private void createTripleTable(String tableName) throws SQLException {
 		jdbcConnection = DriverManager.getConnection(url, user, password);
@@ -44,7 +26,14 @@ public class PostgreSQLServer extends Server {
         ResultSet resultSet = meta.getTables(null, null, tableName, new String[] {"TABLE"});
         if (resultSet.next()) {
             System.out.println("Table " + tableName + " already exists.");
-            System.out.println("WARNING: causalHistory for exitsting records not present");
+            Statement statement = jdbcConnection.createStatement();
+            String sql = "SELECT DISTINCT requestid FROM " + id;
+            ResultSet result = statement.executeQuery(sql);
+            while(result.next()) {
+            	String requestId = result.getString("requestid");
+            	causalHistory.add(requestId);
+            }
+            System.out.println("Causal history populated with "+causalHistory.size() + " entries.");
         }
         else {
 			Statement statement = jdbcConnection.createStatement();
@@ -78,16 +67,7 @@ public class PostgreSQLServer extends Server {
 			PreparedStatement selectStatement = jdbcConnection.prepareStatement("SELECT * FROM " + id + " WHERE SUBJECT=?");
 			selectStatement.setString(1, subject);
 			ResultSet resultSet = selectStatement.executeQuery();
-			while (resultSet.next()) {
-                String resultSubject = resultSet.getString("SUBJECT");
-                String predicate = resultSet.getString("PREDICATE");
-                String object = resultSet.getString("OBJECT");
-                String requestId = resultSet.getString("REQUESTID");
-                Timestamp timestamp = resultSet.getTimestamp("TIME");
-                LocalDateTime timeStamp = timestamp.toLocalDateTime();
-                Triple triple = new Triple(resultSubject, predicate, object, requestId, timeStamp);
-                triples.add(triple);
-            }
+			resultSetToList(triples, resultSet);
 			jdbcConnection.close();
             return triples;
 		} catch (SQLException e) {
@@ -95,6 +75,19 @@ public class PostgreSQLServer extends Server {
 			return null;
 		}
 		
+	}
+
+	private void resultSetToList(List<Triple> triples, ResultSet resultSet) throws SQLException {
+		while (resultSet.next()) {
+		    String resultSubject = resultSet.getString("SUBJECT");
+		    String predicate = resultSet.getString("PREDICATE");
+		    String object = resultSet.getString("OBJECT");
+		    String requestId = resultSet.getString("REQUESTID");
+		    Timestamp timestamp = resultSet.getTimestamp("TIME");
+		    LocalDateTime timeStamp = timestamp.toLocalDateTime();
+		    Triple triple = new Triple(resultSubject, predicate, object, requestId, timeStamp);
+		    triples.add(triple);
+		}
 	}
 
 	@Override
@@ -136,9 +129,63 @@ public class PostgreSQLServer extends Server {
 	}
 
 	@Override
-	public boolean merge(String serverId, int otherPort) {
-		// TODO Auto-generated method stub
-		return false;
+	protected List<Triple> getTriplesFromReqId(String reqid) {
+		List<Triple> triples = new ArrayList<>();
+		try {
+			jdbcConnection = DriverManager.getConnection(url, user, password);
+			PreparedStatement selectStatement = jdbcConnection.prepareStatement("SELECT * FROM " + id + " WHERE REQUESTID=?");
+			selectStatement.setString(1, reqid);
+			ResultSet resultSet = selectStatement.executeQuery();
+			resultSetToList(triples, resultSet);
+			jdbcConnection.close();
+            return triples;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	@Override
+	protected boolean compareAndUpdate(Triple triple) {
+		try {
+			jdbcConnection = DriverManager.getConnection(url, user, password);
+			PreparedStatement selectStatement = jdbcConnection.prepareStatement("SELECT * FROM " + id + " WHERE SUBJECT=? AND PREDICATE=?");
+			selectStatement.setString(1, triple.getSubject());
+			selectStatement.setString(2, triple.getPredicate());
+			ResultSet resultSet = selectStatement.executeQuery();
+			
+			if (!resultSet.next()) {
+                // Row doesn't exist, insert a new row
+                PreparedStatement insertStatement = jdbcConnection.prepareStatement("INSERT INTO "+ id +" (SUBJECT, PREDICATE, OBJECT, REQUESTID, TIME) VALUES (?, ?, ?, ?, ?)");
+                insertStatement.setString(1, triple.getSubject());
+                insertStatement.setString(2, triple.getPredicate());
+                insertStatement.setString(3, triple.getObject());
+                insertStatement.setString(4, triple.getRequestId());
+                insertStatement.setTimestamp(5, Timestamp.valueOf(triple.getTimeStamp()));
+                insertStatement.executeUpdate();
+            } else {
+            	Timestamp existingTime = resultSet.getTimestamp("time");
+            	Timestamp mergeTime = Timestamp.valueOf(triple.getTimeStamp());
+            	if (existingTime.before(mergeTime)) {
+            		PreparedStatement updateStatement = jdbcConnection.prepareStatement("UPDATE " + id + " SET OBJECT=?, REQUESTID=?, TIME=? WHERE SUBJECT=? AND PREDICATE=?");
+            		updateStatement.setString(1, triple.getObject());
+            		updateStatement.setString(2, triple.getRequestId());
+            		updateStatement.setTimestamp(3, mergeTime);
+            		updateStatement.setString(4,  triple.getSubject());
+            		updateStatement.setString(5, triple.getPredicate());
+            		updateStatement.executeUpdate();
+            	}
+            }
+			return true;
+			
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		
+		
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -151,5 +198,6 @@ public class PostgreSQLServer extends Server {
 		PostgreSQLServer server = new PostgreSQLServer(port, id);
 		server.start();
 	}
+
 	
 }

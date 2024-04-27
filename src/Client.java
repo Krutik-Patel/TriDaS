@@ -28,6 +28,7 @@ public class Client {
 		System.out.println("1. Register a server");
 		System.out.println("2. Query");
 		System.out.println("3. Update");
+		System.out.println("4. Merge");
 		System.out.println("0. Exit");
 		int choice = in.nextInt();
 		in.nextLine();
@@ -39,13 +40,13 @@ public class Client {
 		System.out.println("Server " + serverName + " registered!");
 	}
 	
-	private String chooseServer() {
+	private String chooseServer(String message) {
 		if (servers.isEmpty()) {
 	        System.out.println("No servers registered.");
 	        return null;
 	    }
 
-	    System.out.println("Choose a server:");
+	    System.out.println(message);
 	    for (String serverName : servers.keySet()) {
 	        System.out.println(serverName);
 	    }
@@ -119,6 +120,35 @@ public class Client {
 		}
 	}
 	
+	private String sendMergeRequest(String server1, String server2, String requestId) {
+		int port1 = servers.get(server1);
+		int port2 = servers.get(server2);
+		try {
+			URL url = new URL("http://localhost:"+ port1);
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestProperty("requestType", "merge");
+			connection.setRequestProperty("requestId", requestId);
+			connection.setRequestProperty("requestParams", String.valueOf(port2));
+			int responseCode = connection.getResponseCode();
+			if (responseCode == HttpURLConnection.HTTP_OK) { // success
+				BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+				String inputLine;
+				StringBuffer response = new StringBuffer();
+				while ((inputLine = in.readLine()) != null) {
+					response.append(inputLine);
+				}
+				in.close();
+				return response.toString();
+			} else {
+				System.out.println("GET request did not work.");
+				return null;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
 	public static void printTriples(List<Triple> triples) {
         System.out.println("Subject\t\tPredicate\t\tObject");
         System.out.println("----------------------------------------------------");
@@ -134,7 +164,7 @@ public class Client {
 		System.out.println("Welcome!");
 		Client client = new Client();
 		int choice = 1;
-		String server;
+		String server, server2;
 		while(choice != 0) {
 			choice = client.menu();
 			switch (choice) {
@@ -147,7 +177,7 @@ public class Client {
 				client.registerServer(serverName, port);
 				break;
 			case 2:
-				server = client.chooseServer();
+				server = client.chooseServer("Choose a server:");
 				if (server != null) {
 					System.out.print("Enter the subject you are querying for: ");
 					String subject = client.in.nextLine();
@@ -158,7 +188,7 @@ public class Client {
 				}
 				break;
 			case 3:
-				server = client.chooseServer();
+				server = client.chooseServer("Choose a server:");
 				if (server != null) {
 					System.out.print("Enter the subject of the triple you want to update: ");
 					String subject = client.in.nextLine();
@@ -176,6 +206,22 @@ public class Client {
 					}
 				}
 				break;
+			case 4:
+				server = client.chooseServer("Choose server 1:");
+				server2 = client.chooseServer("Choose a server 2:");
+				String requestId = client.generateRequestId();
+				if (server != server2) {
+					String result = client.sendMergeRequest(server, server2, requestId);
+					if (result.equals("true")) {
+						System.out.println("Merge successful!");
+					}
+					else {
+						System.out.println("Merge failed :(");
+					}
+				}
+				else {
+					System.out.println("Server 1 and 2 must be different");
+				}
 			case 0:
 				System.out.println("Bye!");
 			default:
@@ -189,8 +235,5 @@ public class Client {
 		}
 	}
 
-	
-
-	
 
 }
