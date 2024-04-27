@@ -99,10 +99,6 @@ public class PostgreSQLServer extends Server {
 
 	@Override
 	public boolean update(String subject, String predicate, String object, String requestId) {
-		System.out.println("Subject:" + subject);
-		System.out.println("Predicate:" + predicate);
-		System.out.println("Object:" + object);
-		System.out.println("Request:" + requestId);
 		PreparedStatement selectStatement;
 		try {
 			jdbcConnection = DriverManager.getConnection(url, user, password);

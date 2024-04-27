@@ -26,14 +26,6 @@ public abstract class Server {
 		causalHistory = new HashSet<String>();
 	}
 
-	protected String triplesToString(List<Triple> triples) {
-		String result = "";
-		for (Triple triple: triples) {
-			result += triple.toString() + "|";
-		}
-		result = result.substring(0, result.length()-1);
-		return result;
-	}
 
 	class RequestHandler implements HttpHandler {
 		public void handle(HttpExchange exchange) throws IOException {
@@ -42,25 +34,24 @@ public abstract class Server {
 			List<String> requestIds = requestHeaders.get("requestId");
 			List<String> requestParams = requestHeaders.get("requestParams");
 			String response = "Unkown request";
-			System.out.println("RequestType: " + requestTypes);
+			
 			if (requestTypes != null) {
 				String requestType = requestTypes.get(0);
 				String requestId = requestIds.get(0);
 				String requestParam = requestParams.get(0);
+				System.out.println("RequestId: " + requestId);
+				System.out.println("RequestType: " + requestType);
 				if (requestType.equals("query")) {
 					String subject = requestParam;
 					List<Triple> result = query(subject);
-					response = triplesToString(result);
+					response = Triple.triplesToString(result);
 				}
 				else if (requestType.equals("update")) {
-					System.out.println("Handling update");
-					System.out.println("Request params: "+ requestParam);
+					
 					String subject = requestParam.split("\\|")[0];	
 					String predicate = requestParam.split("\\|")[1];
 					String object = requestParam.split("\\|")[2];
-					System.out.println("Calling update with:" + subject + predicate + object);
 					boolean result = update(subject, predicate, object, requestId);
-					System.out.println("Response: "+ result);
 					if (result) {
 						causalHistory.add(requestId);
 					}

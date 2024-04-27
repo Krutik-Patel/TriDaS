@@ -4,7 +4,9 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -117,6 +119,17 @@ public class Client {
 		}
 	}
 	
+	public static void printTriples(List<Triple> triples) {
+        System.out.println("Subject\t\tPredicate\t\tObject");
+        System.out.println("----------------------------------------------------");
+        for (Triple triple : triples) {
+            String subject = triple.getSubject();
+            String predicate = triple.getPredicate();
+            String object = triple.getObject();
+            System.out.printf("%-15s%-15s%-15s%n", subject, predicate, object);
+        }
+    }
+	
 	public static void main(String[] args) {
 		System.out.println("Welcome!");
 		Client client = new Client();
@@ -140,7 +153,8 @@ public class Client {
 					String subject = client.in.nextLine();
 					String requestId = client.generateRequestId();
 					String result = client.sendQueryRequest(server, subject, requestId);
-					System.out.println(result);
+					List<Triple> results = Triple.stringToTriples(result);
+					printTriples(results);
 				}
 				break;
 			case 3:
@@ -154,10 +168,23 @@ public class Client {
 					String object = client.in.nextLine();
 					String requestId = client.generateRequestId();
 					String result = client.sendUpdateRequest(server, subject, predicate, object, requestId);
-					System.out.println(result);
+					if (result.equals("true")) {
+						System.out.println("Update successful!");
+					}
+					else {
+						System.out.println("Update failed :(");
+					}
 				}
 				break;
+			case 0:
+				System.out.println("Bye!");
+			default:
+				System.out.println("Invalid choice!");
+				break;
 			}
+			System.out.println();
+			System.out.println("----------------------------------------------------");
+			System.out.println();
 				
 		}
 	}
