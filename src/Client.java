@@ -183,8 +183,13 @@ public class Client {
 					String subject = client.in.nextLine();
 					String requestId = client.generateRequestId();
 					String result = client.sendQueryRequest(server, subject, requestId);
-					List<Triple> results = Triple.stringToTriples(result);
-					printTriples(results);
+					if (result.equals("empty")) {
+						System.out.println("No records found.");
+					}
+					else {
+						List<Triple> results = Triple.stringToTriples(result);
+						printTriples(results);
+					}
 				}
 				break;
 			case 3:
@@ -222,6 +227,7 @@ public class Client {
 				else {
 					System.out.println("Server 1 and 2 must be different");
 				}
+				break;
 			case 0:
 				System.out.println("Bye!");
 			default:

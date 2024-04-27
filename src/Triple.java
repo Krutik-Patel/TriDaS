@@ -41,6 +41,9 @@ public class Triple {
 	}	       
 	
 	public static String triplesToString(List<Triple> triples) {
+		if (triples.size()==0) {
+			return "empty";
+		}
 		String result = "";
 		for (Triple triple: triples) {
 			result += triple.toString() + "|";
