@@ -16,7 +16,7 @@ public class PostgreSQLServer extends Server {
 
 	private final String url = "jdbc:postgresql://localhost/tridas";
 	private final String user = "postgres";
-	private final String password = "root";
+	private final String password = "postgres";
 	private Connection jdbcConnection;
 	
 	
